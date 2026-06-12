@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CLAT AI - Smart Legal Prep</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] },
+                    colors: {
+                        brand: { 50: '#eef2ff', 100: '#e0e7ff', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca', 900: '#312e81' }
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.4s ease-out forwards',
+                        'slide-up': 'slideUp 0.3s ease-out forwards',
+                    },
+                    keyframes: {
+                        fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+                        slideUp: { '0%': { opacity: '0', transform: 'translateY(10px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #f8fafc; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .glass { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,0.3); }
+        .spinner { animation: spin 1s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        
+        /* Toast Notifications */
+        #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 100; display: flex; flex-direction: column; gap: 10px; }
+        .toast { padding: 16px 20px; border-radius: 12px; font-size: 14px; font-weight: 600; color: white; display: flex; align-items: center; gap: 10px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); animation: slideUp 0.3s ease-out forwards; }
+        .toast.error { background: linear-gradient(to right, #ef4444, #dc2626); }
+        .toast.success { background: linear-gradient(to right, #10b981, #059669); }
+        .toast.info { background: linear-gradient(to right, #3b82f6, #2563eb); }
+    </style>
+</head>
+<body class="text-slate-800 font-sans h-screen overflow-hidden flex flex-col md:flex-row">
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <!-- Sidebar Navigation -->
+    <aside class="w-full md:w-72 bg-[#0f172a] text-slate-100 flex flex-col shadow-2xl z-20 flex-shrink-0">
+        <div class="p-8 flex items-center gap-4">
+            <div class="bg-gradient-to-br from-brand-500 to-brand-700 p-2.5 rounded-xl shadow-lg shadow-brand-500/30">
+                <i class="ph-fill ph-scales text-white text-2xl"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold tracking-tight leading-none text-white">CLAT <span class="text-brand-400">AI</span></h1>
+                <p class="text-xs text-slate-400 mt-1.5 font-medium uppercase tracking-widest">Prep Dashboard</p>
+            </div>
+        </div>
+
+        <nav class="flex flex-col gap-2 px-5 mt-4">
+            <button onclick="switchTab('feed')" id="tab-feed" class="flex items-center gap-3 p-4 rounded-xl transition-all duration-200 bg-brand-600/10 text-brand-400 border border-brand-500/20 font-bold shadow-sm">
+                <i class="ph-fill ph-newspaper text-xl"></i> Daily News
+            </button>
+            
+            <button onclick="switchTab('quiz')" id="tab-quiz" class="flex items-center gap-3 p-4 rounded-xl transition-all duration-200 hover:bg-slate-800 text-slate-400 hover:text-white font-medium">
+                <i class="ph-bold ph-exam text-xl"></i> AI Quiz Engine
+            </button>
+        </nav>
+
+        <div class="mt-auto p-6">
+            <div class="bg-slate-800/40 rounded-2xl p-5 border border-slate-700/50 backdrop-blur-sm">
+                <p class="text-xs text-slate-400 font-bold mb-3 uppercase tracking-wider">Backend Status</p>
+                <div class="flex items-center justify-between text-xs font-medium mb-2">
+                    <span class="text-slate-300 flex items-center gap-2"><i class="ph-fill ph-globe-hemisphere-west"></i> /api/gnews</span>
+                    <span class="text-emerald-400 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Live</span>
+                </div>
+                <div class="flex items-center justify-between text-xs font-medium">
+                    <span class="text-slate-300 flex items-center gap-2"><i class="ph-fill ph-brain"></i> /api/gemini</span>
+                    <span class="text-emerald-400 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Live</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 overflow-y-auto relative scroll-smooth h-full bg-[#f8fafc]">
+        
+        <div class="p-4 md:p-10 max-w-5xl mx-auto h-full pb-32">
+            
+            <!-- VIEW: NEWS FEED -->
+            <div id="view-feed" class="block animate-fade-in">
+                <header class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 glass p-6 rounded-2xl sticky top-0 z-10">
+                    <div>
+                        <h2 class="text-2xl font-extrabold text-slate-900 tracking-tight">Curated Legal News</h2>
+                        <p class="text-slate-500 text-sm mt-1 font-medium">Fetch live news and let AI filter out the noise.</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button onclick="ui_fetchNews()" id="btn-fetch" class="bg-white border border-slate-200 text-slate-700 px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-slate-50 transition-all flex items-center gap-2 shadow-sm">
+                            <i class="ph-bold ph-arrows-clockwise text-lg"></i> Refresh
+                        </button>
+                        <button onclick="ui_generateQuiz()" id="btn-generate-quiz" class="bg-gradient-to-r from-brand-600 to-brand-500 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:shadow-lg hover:shadow-brand-500/30 transition-all flex items-center gap-2">
+                            <i class="ph-fill ph-magic-wand text-lg"></i> Create Quiz
+                        </button>
+                    </div>
+                </header>
+                
+                <div id="feed-container" class="space-y-6">
+                    <!-- Initial Empty State -->
+                    <div id="empty-state" class="flex flex-col items-center justify-center py-24 text-slate-500 bg-white rounded-3xl border border-slate-200 shadow-sm">
+                        <div class="bg-brand-50 p-5 rounded-full mb-5 shadow-inner">
+                            <i class="ph-fill ph-radar text-5xl text-brand-500"></i>
+                        </div>
+                        <h3 class="text-xl font-extrabold text-slate-800 mb-2">Scan the Horizon</h3>
+                        <p class="text-sm mb-8 max-w-md mx-auto text-center font-medium">To save your Vercel bandwidth, news is only fetched when you request it.</p>
+                        <div class="flex gap-4">
+                            <button onclick="ui_fetchNews()" class="bg-slate-900 text-white px-8 py-3.5 rounded-xl text-sm font-bold hover:bg-slate-800 transition-all shadow-lg flex items-center gap-2">
+                                <i class="ph-bold ph-globe"></i> Fetch Live News
+                            </button>
+                            <button onclick="ui_loadSample()" class="bg-white text-slate-700 border border-slate-200 px-6 py-3.5 rounded-xl text-sm font-bold hover:bg-slate-50 transition-all flex items-center gap-2">
+                                <i class="ph-bold ph-database"></i> Use Mock Data
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: QUIZ -->
+            <div id="view-quiz" class="hidden max-w-3xl mx-auto animate-fade-in">
+                <header class="mb-8 text-center md:text-left">
+                    <h2 class="text-2xl font-extrabold text-slate-900 tracking-tight">AI Generated Assessment</h2>
+                    <p class="text-slate-500 text-sm mt-1 font-medium">Questions formulated strictly from the news you analyzed today.</p>
+                </header>
+                
+                <div id="quiz-container" class="space-y-6">
+                    <div class="bg-white p-16 text-center rounded-3xl border border-slate-200 shadow-sm">
+                        <div class="bg-slate-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-5 border border-slate-100">
+                            <i class="ph-fill ph-exam text-4xl text-slate-300"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-slate-800 mb-2">No Quiz Active</h3>
+                        <p class="text-slate-500 text-sm mb-6 font-medium">Go back to the Daily News feed, analyze some articles, and click "Create Quiz".</p>
+                        <button onclick="switchTab('feed')" class="bg-slate-900 text-white px-6 py-3 rounded-xl font-bold hover:bg-slate-800 transition-all">Return to Feed</button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- ========================================== -->
+    <!-- APPLICATION LOGIC -->
+    <!-- ========================================== -->
+    <script>
+        // --- SHARED STATE ---
+        let state = {
+            news: [],
+            analyses: {}, 
+            quiz: null
+        };
+
+        const MOCK_NEWS = [
+            { title: "Supreme Court Strikes Down Electoral Bonds Scheme As Unconstitutional", description: "In a unanimous verdict, a five-judge Constitution bench headed by Chief Justice DY Chandrachud held that the scheme violates the right to information.", url: "https://mock-1.com", publishedAt: new Date().toISOString(), source: { name: "Supreme Court Updates" } },
+            { title: "Parliament Passes New Criminal Laws, Replacing IPC, CrPC, and Evidence Act", description: "The Lok Sabha passed the Bharatiya Nyaya Sanhita, Bharatiya Nagarik Suraksha Sanhita, and Bharatiya Sakshya Bill.", url: "https://mock-2.com", publishedAt: new Date().toISOString(), source: { name: "PRS Legislative" } },
+            { title: "India wins the ICC Cricket World Cup finals in thrilling match", description: "The Indian cricket team secured a massive victory against Australia in the final match held in Ahmedabad.", url: "https://mock-3.com", publishedAt: new Date().toISOString(), source: { name: "Sports Today" } }
+        ];
+
+        // --- UI UTILITIES ---
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            
+            let icon = 'ph-info';
+            if(type === 'error') icon = 'ph-warning-circle';
+            if(type === 'success') icon = 'ph-check-circle';
+            
+            toast.innerHTML = `<i class="ph-fill ${icon} text-xl"></i> <span>${message}</span>`;
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(10px)';
+                toast.style.transition = 'all 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        function switchTab(tab) {
+            document.getElementById('view-feed').style.display = tab === 'feed' ? 'block' : 'none';
+            document.getElementById('view-quiz').style.display = tab === 'quiz' ? 'block' : 'none';
+            
+            const feedBtn = document.getElementById('tab-feed');
+            const quizBtn = document.getElementById('tab-quiz');
+            
+            const activeClass = "flex items-center gap-3 p-4 rounded-xl transition-all duration-200 bg-brand-600/10 text-brand-400 border border-brand-500/20 font-bold shadow-sm";
+            const inactiveClass = "flex items-center gap-3 p-4 rounded-xl transition-all duration-200 hover:bg-slate-800 text-slate-400 hover:text-white font-medium border border-transparent";
+            
+            feedBtn.className = tab === 'feed' ? activeClass : inactiveClass;
+            quizBtn.className = tab === 'quiz' ? activeClass : inactiveClass;
+        }
+
+        // --- BACKEND API CALLS (VERCEL ROUTING) ---
+        async function fetchNewsAPI() {
+            try {
+                // Calls the api/gnews.js file on your Vercel server
+                const response = await fetch('/api/gnews');
+                if (!response.ok) {
+                    throw new Error(response.status === 404 ? "Backend route not found. Running locally?" : "API Error");
+                }
+                return await response.json();
+            } catch (error) {
+                console.error("News Fetch Error:", error);
+                throw error;
+            }
+        }
+
+        async function fetchGeminiAPI(prompt, schema) {
+            try {
+                // Calls the api/gemini.js file on your Vercel server
+                const response = await fetch('/api/gemini', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt, schema })
+                });
+                if (!response.ok) {
+                    throw new Error(response.status === 404 ? "Backend route not found. Running locally?" : "AI Processing Error");
+                }
+                return await response.json();
+            } catch (error) {
+                console.error("Gemini API Error:", error);
+                throw error;
+            }
+        }
+
+        // --- MAIN ACTIONS ---
+        async function ui_fetchNews() {
+            const btn = document.getElementById('btn-fetch');
+            const container = document.getElementById('feed-container');
+            
+            btn.innerHTML = `<i class="ph-bold ph-spinner-gap text-lg spinner"></i> Fetching...`;
+            btn.disabled = true;
+            
+            container.innerHTML = `
+                <div class="flex flex-col items-center justify-center py-24 text-slate-400 bg-white rounded-3xl border border-slate-200 shadow-sm">
+                    <i class="ph-bold ph-spinner-gap text-4xl spinner text-brand-500 mb-4"></i>
+                    <p class="font-bold text-slate-700">Connecting to Vercel Backend...</p>
+                </div>
+            `;
+
+            try {
+                const data = await fetchNewsAPI();
+                if (data.articles && data.articles.length > 0) {
+                    state.news = data.articles;
+                    renderNews();
+                    showToast("Latest news fetched successfully", "success");
+                } else {
+                    throw new Error("No articles found");
+                }
+            } catch (error) {
+                showToast(error.message, "error");
+                container.innerHTML = `
+                    <div class="flex flex-col items-center justify-center py-24 bg-white rounded-3xl border border-slate-200 shadow-sm">
+                        <i class="ph-fill ph-warning-circle text-5xl text-red-400 mb-4"></i>
+                        <h3 class="font-bold text-slate-800 text-lg mb-2">Connection Failed</h3>
+                        <p class="text-sm text-slate-500 mb-6 max-w-sm text-center">If you are running this locally, the Vercel /api routes won't work. Please load mock data.</p>
+                        <button onclick="ui_loadSample()" class="bg-slate-900 text-white px-6 py-3 rounded-xl font-bold hover:bg-slate-800 transition-all flex items-center gap-2"><i class="ph-bold ph-database"></i> Use Mock Data</button>
+                    </div>
+                `;
+            } finally {
+                btn.innerHTML = `<i class="ph-bold ph-arrows-clockwise text-lg"></i> Refresh`;
+                btn.disabled = false;
+            }
+        }
+
+        function ui_loadSample() {
+            state.news = MOCK_NEWS;
+            renderNews();
+            showToast("Loaded sample data for testing", "info");
+        }
+
+        async function ui_analyzeArticle(index) {
+            const article = state.news[index];
+            const btn = document.getElementById(`btn-analyze-${index}`);
+            
+            btn.innerHTML = `<i class="ph-bold ph-spinner-gap text-lg spinner"></i> Thinking...`;
+            btn.disabled = true;
+
+            const prompt = `Analyze this news article for CLAT (Common Law Admission Test in India) aspirants. \nTitle: "${article.title}"\nDescription: "${article.description}"\nEvaluate it strictly for CLAT preparation. Reject useless news (sports scores, celebrity gossip, local crimes) by setting isRelevant to false.`;
+            const schema = {
+                type: "OBJECT",
+                properties: {
+                    isRelevant: { type: "BOOLEAN" },
+                    scores: { type: "OBJECT", properties: { constitutionalLaw: { type: "INTEGER" }, judiciary: { type: "INTEGER" }, governmentPolicy: { type: "INTEGER" } } },
+                    summary: { type: "OBJECT", properties: { whatHappened: { type: "STRING" }, whyImportant: { type: "STRING" }, clatAngle: { type: "STRING" } } },
+                    importanceMeter: { type: "STRING" },
+                    topicBucket: { type: "STRING" }
+                }, required: ["isRelevant", "scores", "summary", "importanceMeter", "topicBucket"]
+            };
+
+            try {
+                const analysis = await fetchGeminiAPI(prompt, schema);
+                state.analyses[article.url] = { ...analysis, verified: false };
+                renderNews();
+                showToast("Analysis complete", "success");
+            } catch (error) {
+                showToast("Analysis failed: " + error.message, "error");
+                btn.innerHTML = `<i class="ph-fill ph-brain text-lg"></i> Try Again`;
+                btn.disabled = false;
+            }
+        }
+
+        async function ui_verifyFacts(index) {
+            const article = state.news[index];
+            const an = state.analyses[article.url];
+            const btn = document.getElementById(`btn-verify-${index}`);
+            
+            btn.innerHTML = `<i class="ph-bold ph-spinner-gap spinner"></i>`;
+            btn.disabled = true;
+
+            const prompt = `Act as an expert Legal auditor. Review this news and its CLAT analysis.\nNews: ${article.title} - ${article.description}\nCLAT Analysis: ${JSON.stringify(an.summary)}\nVerify: Is the legal context factually accurate based on Indian law?`;
+            const schema = { type: "OBJECT", properties: { isAccurate: { type: "BOOLEAN" }, verificationNotes: { type: "STRING" } }, required: ["isAccurate", "verificationNotes"] };
+
+            try {
+                const verification = await fetchGeminiAPI(prompt, schema);
+                state.analyses[article.url] = { ...an, verified: true, ...verification };
+                renderNews();
+                showToast(verification.isAccurate ? "Facts Verified" : "Facts Disputed!", verification.isAccurate ? "success" : "error");
+            } catch (error) {
+                showToast("Verification failed", "error");
+                btn.innerHTML = `Verify`;
+                btn.disabled = false;
+            }
+        }
+
+        async function ui_generateQuiz() {
+            const btn = document.getElementById('btn-generate-quiz');
+            const container = document.getElementById('quiz-container');
+
+            const relevantNews = Object.entries(state.analyses)
+                .filter(([url, data]) => data.isRelevant)
+                .map(([url, data]) => {
+                    const article = state.news.find(n => n.url === url);
+                    return article ? { title: article.title, facts: data.summary } : null;
+                })
+                .filter(Boolean);
+
+            if (relevantNews.length === 0) {
+                showToast("Please analyze at least one relevant article first", "error");
+                return;
+            }
+
+            btn.innerHTML = `<i class="ph-bold ph-spinner-gap text-lg spinner"></i> Building...`;
+            btn.disabled = true;
+            switchTab('quiz');
+            
+            container.innerHTML = `
+                <div class="flex flex-col items-center justify-center py-32 text-slate-500 bg-white rounded-3xl border border-slate-200 shadow-sm animate-fade-in">
+                    <i class="ph-bold ph-spinner-gap text-5xl spinner text-brand-500 mb-6"></i>
+                    <h3 class="text-2xl font-bold text-slate-800 mb-2">Crafting your Assessment</h3>
+                    <p class="font-medium text-sm text-center max-w-sm">Generating challenging questions based on today's legal updates...</p>
+                </div>
+            `;
+
+            const prompt = `Generate a rigorous CLAT-style quiz based ONLY on these recently analyzed news events: ${JSON.stringify(relevantNews)}. Generate exactly 5 multiple choice questions.`;
+            const schema = {
+                type: "OBJECT",
+                properties: {
+                    questions: { type: "ARRAY", items: { type: "OBJECT", properties: { category: { type: "STRING" }, questionText: { type: "STRING" }, options: { type: "ARRAY", items: { type: "STRING" } }, correctOptionIndex: { type: "INTEGER" }, explanation: { type: "STRING" } }, required: ["category", "questionText", "options", "correctOptionIndex", "explanation"] } }
+                }, required: ["questions"]
+            };
+
+            try {
+                const quizData = await fetchGeminiAPI(prompt, schema);
+                state.quiz = quizData.questions;
+                renderQuiz();
+                showToast("Quiz Generated!", "success");
+            } catch (error) {
+                showToast("Failed to generate quiz: " + error.message, "error");
+                switchTab('feed');
+            } finally {
+                btn.innerHTML = `<i class="ph-fill ph-magic-wand text-lg"></i> Create Quiz`;
+                btn.disabled = false;
+            }
+        }
+
+        // --- RENDERING FUNCTIONS ---
+        function renderNews() {
+            const container = document.getElementById('feed-container');
+            container.innerHTML = '';
+            
+            state.news.forEach((article, idx) => {
+                const an = state.analyses[article.url];
+                let analysisHtml = '';
+                
+                if (an) {
+                    if (!an.isRelevant) {
+                        analysisHtml = `
+                            <div class="mt-5 pt-4 border-t border-slate-100">
+                                <div class="bg-slate-50 p-4 rounded-xl flex items-center gap-3 border border-slate-200">
+                                    <i class="ph-fill ph-prohibit text-slate-400 text-xl"></i>
+                                    <span class="font-bold text-slate-600 text-sm">Filtered Out: Not relevant for CLAT</span>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        const isHigh = an.importanceMeter?.toLowerCase() === 'high';
+                        const color = isHigh ? 'red' : (an.importanceMeter?.toLowerCase() === 'medium' ? 'amber' : 'emerald');
+                        
+                        analysisHtml = `
+                            <div class="mt-6 pt-6 border-t border-slate-100 animate-slide-up">
+                                <div class="flex flex-wrap gap-2 mb-5">
+                                    <span class="px-3 py-1 rounded-lg text-[10px] font-extrabold bg-${color}-50 text-${color}-700 border border-${color}-200 uppercase tracking-widest">
+                                        ${an.importanceMeter || 'UNK'} Priority
+                                    </span>
+                                    <span class="px-3 py-1 rounded-lg text-[10px] font-extrabold bg-slate-100 text-slate-600 border border-slate-200 uppercase tracking-widest">
+                                        ${an.topicBucket || 'General'}
+                                    </span>
+                                    ${an.verified ? `
+                                        <span class="px-3 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-widest border ${an.isAccurate ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'}">
+                                            ${an.isAccurate ? '<i class="ph-bold ph-check"></i> Verified' : '<i class="ph-bold ph-warning"></i> Disputed'}
+                                        </span>
+                                    ` : ''}
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+                                    <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200/60">
+                                        <h5 class="text-[10px] font-extrabold text-slate-400 mb-2 uppercase tracking-widest">Impact Summary</h5>
+                                        <p class="text-sm text-slate-700 leading-relaxed font-medium">${an.summary?.whyImportant}</p>
+                                    </div>
+                                    <div class="bg-brand-50 p-5 rounded-2xl border border-brand-100">
+                                        <h5 class="text-[10px] font-extrabold text-brand-600 mb-2 uppercase tracking-widest flex items-center gap-1"><i class="ph-bold ph-gavel"></i> CLAT Angle</h5>
+                                        <p class="text-sm text-brand-900 font-bold leading-relaxed">${an.summary?.clatAngle}</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex items-center justify-between border-t border-slate-100 pt-4">
+                                    <div class="flex gap-4 text-xs font-bold text-slate-400">
+                                        <span>CONST: <span class="text-slate-700">${an.scores?.constitutionalLaw || 0}</span>/10</span>
+                                        <span>JUD: <span class="text-slate-700">${an.scores?.judiciary || 0}</span>/10</span>
+                                    </div>
+                                    ${!an.verified ? `
+                                        <button id="btn-verify-${idx}" onclick="ui_verifyFacts(${idx})" class="text-xs text-brand-600 font-bold hover:text-brand-800 bg-brand-50 hover:bg-brand-100 px-4 py-2 rounded-lg flex items-center gap-1.5 transition-colors">
+                                            <i class="ph-bold ph-shield-check text-sm"></i> Verify Facts
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+
+                const d = new Date(article.publishedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+
+                container.innerHTML += `
+                    <article class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-shadow p-6 md:p-8 animate-slide-up" style="animation-delay: ${idx * 0.05}s">
+                        <div class="flex flex-col md:flex-row gap-6 justify-between items-start">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-3">
+                                    <span class="bg-slate-900 text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">${article.source?.name || 'News'}</span>
+                                    <span class="text-xs font-bold text-slate-400">${d}</span>
+                                </div>
+                                <h3 class="text-xl md:text-2xl font-extrabold text-slate-900 mb-3 leading-tight tracking-tight">${article.title}</h3>
+                                <p class="text-slate-500 text-sm leading-relaxed font-medium">${article.description}</p>
+                            </div>
+                            <div class="flex flex-col gap-2 shrink-0 w-full md:w-auto mt-4 md:mt-0">
+                                ${!an ? `
+                                    <button id="btn-analyze-${idx}" onclick="ui_analyzeArticle(${idx})" class="w-full flex items-center justify-center gap-2 text-sm font-bold text-white bg-gradient-to-br from-brand-500 to-brand-700 hover:shadow-lg hover:shadow-brand-500/30 px-5 py-3 rounded-xl transition-all">
+                                        <i class="ph-fill ph-brain text-xl"></i> AI Analyze
+                                    </button>
+                                ` : ''}
+                                <a href="${article.url}" target="_blank" class="w-full flex items-center justify-center gap-2 text-sm font-bold text-slate-600 bg-white hover:bg-slate-50 border border-slate-200 px-5 py-3 rounded-xl transition-all">
+                                    Read Source <i class="ph-bold ph-arrow-up-right text-lg"></i>
+                                </a>
+                            </div>
+                        </div>
+                        ${analysisHtml}
+                    </article>
+                `;
+            });
+        }
+
+        window.quizState = {};
+        
+        function renderQuiz() {
+            const container = document.getElementById('quiz-container');
+            window.quizState = {}; 
+            
+            if (!state.quiz || state.quiz.length === 0) return;
+
+            let html = '';
+            state.quiz.forEach((q, qIndex) => {
+                let optionsHtml = '';
+                q.options.forEach((opt, oIndex) => {
+                    optionsHtml += `
+                        <div id="q${qIndex}-o${oIndex}" onclick="selectQuizOption(${qIndex}, ${oIndex}, ${q.correctOptionIndex})" class="p-5 border-2 border-slate-100 rounded-2xl transition-all hover:border-brand-300 hover:bg-brand-50 cursor-pointer font-bold text-sm text-slate-700 flex gap-4 items-center group shadow-sm">
+                            <div class="w-6 h-6 rounded-full border-2 border-slate-300 shrink-0 group-hover:border-brand-500 flex items-center justify-center transition-colors" id="q${qIndex}-circle${oIndex}"></div>
+                            <span>${opt}</span>
+                        </div>
+                    `;
+                });
+
+                html += `
+                    <div class="bg-white p-6 md:p-10 rounded-3xl border border-slate-200 shadow-sm animate-slide-up" style="animation-delay: ${qIndex * 0.1}s">
+                        <div class="flex items-center gap-3 mb-6">
+                            <span class="bg-slate-900 text-white text-xs font-bold px-3 py-1.5 rounded-lg uppercase tracking-wider">Question ${qIndex + 1}</span>
+                            <span class="bg-brand-100 text-brand-700 text-xs font-extrabold px-3 py-1.5 rounded-lg tracking-wide">${q.category}</span>
+                        </div>
+                        <h4 class="text-lg md:text-xl font-extrabold text-slate-900 mb-8 leading-snug">${q.questionText}</h4>
+                        <div class="space-y-4 pointer-events-auto" id="q${qIndex}-options-container">
+                            ${optionsHtml}
+                        </div>
+                        <div id="q${qIndex}-explanation" class="hidden mt-8 p-6 rounded-2xl text-sm leading-relaxed border-2 shadow-inner"></div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+
+        function selectQuizOption(qIndex, selectedOIndex, correctOIndex) {
+            if (window.quizState[qIndex] !== undefined) return;
+            window.quizState[qIndex] = selectedOIndex;
+            
+            const isCorrect = selectedOIndex === correctOIndex;
+            document.getElementById(`q${qIndex}-options-container`).classList.add('pointer-events-none');
+            
+            for(let i=0; i<4; i++) {
+                const optDiv = document.getElementById(`q${qIndex}-o${i}`);
+                const circle = document.getElementById(`q${qIndex}-circle${i}`);
+                
+                optDiv.classList.remove('hover:border-brand-300', 'hover:bg-brand-50', 'cursor-pointer');
+                optDiv.classList.add('opacity-50');
+                
+                if (i === correctOIndex) {
+                    optDiv.className = "p-5 border-2 rounded-2xl font-bold text-sm flex gap-4 items-center border-emerald-500 bg-emerald-50 text-emerald-900 opacity-100 shadow-sm scale-[1.02] transition-transform";
+                    circle.className = "w-6 h-6 rounded-full flex items-center justify-center bg-emerald-500 text-white shrink-0";
+                    circle.innerHTML = `<i class="ph-bold ph-check text-sm"></i>`;
+                } else if (i === selectedOIndex && !isCorrect) {
+                    optDiv.className = "p-5 border-2 rounded-2xl font-bold text-sm flex gap-4 items-center border-red-400 bg-red-50 text-red-900 opacity-100 shadow-sm";
+                    circle.className = "w-6 h-6 rounded-full flex items-center justify-center bg-red-500 text-white shrink-0";
+                    circle.innerHTML = `<i class="ph-bold ph-x text-sm"></i>`;
+                }
+            }
+
+            const expDiv = document.getElementById(`q${qIndex}-explanation`);
+            expDiv.classList.remove('hidden');
+            if (isCorrect) {
+                expDiv.classList.add('bg-emerald-50', 'border-emerald-100', 'text-emerald-800');
+                expDiv.innerHTML = `<strong class="text-emerald-700 flex items-center gap-2 mb-2 text-base"><i class="ph-fill ph-check-circle text-xl"></i> Correct Answer</strong> <span class="font-medium">${state.quiz[qIndex].explanation}</span>`;
+            } else {
+                expDiv.classList.add('bg-red-50', 'border-red-100', 'text-red-800');
+                expDiv.innerHTML = `<strong class="text-red-700 flex items-center gap-2 mb-2 text-base"><i class="ph-fill ph-warning-circle text-xl"></i> Incorrect</strong> <span class="font-medium">${state.quiz[qIndex].explanation}</span>`;
+            }
+        }
+    </script>
+</body>
+</html>
+
